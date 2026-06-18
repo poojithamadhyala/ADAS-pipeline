@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+  # CARLA simulator server. Requires an NVIDIA GPU on the host plus the
+  # NVIDIA Container Toolkit (`nvidia-container-runtime`).
+  carla-server:
+    image: carlasim/carla:0.9.15
+    container_name: carla-server
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - DISPLAY=${DISPLAY}
+    ports:
+      - "2000-2002:2000-2002"
+    command: ["/bin/bash", "./CarlaUE4.sh", "-RenderOffScreen", "-nosound"]
+    networks:
+      - adas-net
+
+  # Bridges CARLA's native API to ROS topics (vehicle status, camera,
+  # radar, lidar, control commands, etc.)
+  ros-bridge:
+    image: carlasim/carla-ros-bridge:0.9.15
+    container_name: carla-ros-bridge
+    depends_on:
+      - carla-server
+    environment:
+      - ROS_MASTER_URI=http://ros-bridge:11311
+    command: >
+      roslaunch carla_ros_bridge carla_ros_bridge_with_example_ego_vehicle.launch
+      host:=carla-server town:=Town01
+    networks:
+      - adas-net
+
+  # Our custom ADAS module pipeline (sensor fusion, ACC, LKA, AEB,
+  # vehicle control arbitration).
+  adas-pipeline:
+    build: ./docker/adas_pipeline
+    container_name: adas-pipeline
+    depends_on:
+      - ros-bridge
+    environment:
+      - ROS_MASTER_URI=http://ros-bridge:11311
+    volumes:
+      - ./catkin_ws:/catkin_ws
+    command: >
+      bash -c "source /opt/ros/noetic/setup.bash &&
+               cd /catkin_ws && catkin_make &&
+               source /catkin_ws/devel/setup.bash &&
+               roslaunch adas_pipeline adas_pipeline.launch"
+    networks:
+      - adas-net
+
+networks:
+  adas-net:
+    driver: bridge

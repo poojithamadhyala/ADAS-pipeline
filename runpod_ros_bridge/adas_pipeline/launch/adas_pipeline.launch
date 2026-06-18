@@ -1,0 +1,21 @@
+<launch>
+  <!-- Sensor fusion: combines radar + camera into a single obstacle/lane estimate -->
+  <node pkg="adas_pipeline" type="sensor_fusion_node.py" name="sensor_fusion_node" output="screen" />
+
+  <!-- Adaptive Cruise Control -->
+  <node pkg="adas_pipeline" type="acc_node.py" name="acc_node" output="screen">
+    <param name="target_speed" value="15.0" />
+    <param name="safe_distance" value="10.0" />
+  </node>
+
+  <!-- Lane Keeping Assist -->
+  <node pkg="adas_pipeline" type="lane_keeping_node.py" name="lane_keeping_node" output="screen" />
+
+  <!-- Automatic Emergency Braking -->
+  <node pkg="adas_pipeline" type="aeb_node.py" name="aeb_node" output="screen">
+    <param name="ttc_threshold" value="1.5" />
+  </node>
+
+  <!-- Final arbitration & control output to CARLA -->
+  <node pkg="adas_pipeline" type="vehicle_control_node.py" name="vehicle_control_node" output="screen" />
+</launch>

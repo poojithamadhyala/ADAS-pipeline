@@ -1,0 +1,52 @@
+flowchart TB
+
+    subgraph TOOLS["🛠️ Tools & Prerequisites"]
+        direction TB
+        T1["Host machine:<br/>Linux + NVIDIA GPU"]
+        T2["NVIDIA Container Toolkit"]
+        T3["Docker + Docker Compose"]
+        T4["CARLA Simulator 0.9.15"]
+        T5["ROS Noetic"]
+        T6["CARLA-ROS Bridge"]
+        T7["Python 3 + OpenCV + rospy"]
+
+        T1 --> T2 --> T3
+        T3 --> T4
+        T3 --> T5
+        T5 --> T6
+        T5 --> T7
+    end
+
+    subgraph RUNTIME["🔄 Runtime Workflow (Data Flow)"]
+        direction TB
+        CARLA["CARLA Simulator<br/>Town01 + Ego Vehicle"]
+        BRIDGE["ROS Bridge<br/>camera / radar / vehicle status & control"]
+        FUSION["Sensor Fusion Node<br/>combines radar + camera"]
+        ACC["ACC Node<br/>throttle/brake for speed & distance"]
+        LKA["Lane Keeping Node<br/>steering correction"]
+        AEB["AEB Node<br/>emergency brake via TTC"]
+        CTRL["Vehicle Control Node<br/>arbitration"]
+
+        CARLA <--> BRIDGE
+        BRIDGE -->|radar + camera| FUSION
+        FUSION -->|ObstacleInfo| ACC
+        FUSION -->|ObstacleInfo| LKA
+        FUSION -->|ObstacleInfo| AEB
+        ACC -->|acc_cmd| CTRL
+        LKA -->|lane_cmd| CTRL
+        AEB -->|aeb_cmd| CTRL
+        CTRL -->|vehicle_control_cmd| BRIDGE
+    end
+
+    subgraph DEVLOOP["🔁 Development Loop"]
+        direction LR
+        D1["Edit node code<br/>(catkin_ws/src)"]
+        D2["docker compose up --build"]
+        D3["rostopic pub/echo<br/>to test modules"]
+        D4["Tune params in<br/>adas_pipeline.launch"]
+
+        D1 --> D2 --> D3 --> D4 --> D1
+    end
+
+    TOOLS -. enables .-> RUNTIME
+    RUNTIME -. iterate via .-> DEVLOOP

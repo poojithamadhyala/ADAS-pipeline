@@ -1,0 +1,47 @@
+version: "3.8"
+
+# ---------------------------------------------------------------------
+# Mac-friendly subset of the full stack.
+#
+# Runs just `roscore` + the ADAS pipeline container. No GPU, no CARLA,
+# no NVIDIA toolkit needed - this is everything required to build and
+# test the ACC / Lane Keeping / AEB / Vehicle Control logic in isolation
+# using manually published test messages (see MAC_SETUP.md).
+#
+# The carla-server + ros-bridge services (in docker-compose.yml) will
+# run later on the Windows machine, which has the NVIDIA GPU. The two
+# machines connect over the network once that part is set up.
+# ---------------------------------------------------------------------
+
+services:
+  roscore:
+    image: ros:noetic-ros-core
+    container_name: roscore
+    command: roscore
+    ports:
+      - "11311:11311"
+    networks:
+      - adas-net
+
+  adas-pipeline:
+    build: ./docker/adas_pipeline
+    container_name: adas-pipeline
+    depends_on:
+      - roscore
+    environment:
+      - ROS_MASTER_URI=http://roscore:11311
+    volumes:
+      - ./catkin_ws:/catkin_ws
+    stdin_open: true
+    tty: true
+    command: >
+      bash -c "source /opt/ros/noetic/setup.bash &&
+               cd /catkin_ws && catkin_make &&
+               source /catkin_ws/devel/setup.bash &&
+               roslaunch adas_pipeline adas_pipeline.launch"
+    networks:
+      - adas-net
+
+networks:
+  adas-net:
+    driver: bridge

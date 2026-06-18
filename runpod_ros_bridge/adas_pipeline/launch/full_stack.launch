@@ -1,0 +1,37 @@
+<launch>
+  <!-- ===================== CARLA ROS Bridge ===================== -->
+  <!-- Connects to the CARLA server running on the OTHER RunPod pod.
+       Override carla_host/carla_port at roslaunch time, e.g.:
+       roslaunch adas_pipeline full_stack.launch carla_host:=213.173.98.101 carla_port:=28900 -->
+  <arg name="carla_host" default="localhost" />
+  <arg name="carla_port" default="2000" />
+  <arg name="town" default="Town01" />
+
+  <include file="$(find carla_ros_bridge)/launch/carla_ros_bridge.launch">
+    <arg name="host" value="$(arg carla_host)" />
+    <arg name="port" value="$(arg carla_port)" />
+    <arg name="town" value="$(arg town)" />
+  </include>
+
+  <include file="$(find carla_spawn_objects)/launch/carla_example_ego_vehicle.launch">
+    <arg name="objects_definition_file" value="$(find carla_spawn_objects)/config/objects.json" />
+    <arg name="role_name" value="ego_vehicle" />
+    <arg name="spawn_sensors_only" value="false" />
+  </include>
+
+  <!-- ===================== ADAS Pipeline ===================== -->
+  <node pkg="adas_pipeline" type="sensor_fusion_node.py" name="sensor_fusion_node" output="screen" />
+
+  <node pkg="adas_pipeline" type="acc_node.py" name="acc_node" output="screen">
+    <param name="target_speed" value="15.0" />
+    <param name="safe_distance" value="10.0" />
+  </node>
+
+  <node pkg="adas_pipeline" type="lane_keeping_node.py" name="lane_keeping_node" output="screen" />
+
+  <node pkg="adas_pipeline" type="aeb_node.py" name="aeb_node" output="screen">
+    <param name="ttc_threshold" value="1.5" />
+  </node>
+
+  <node pkg="adas_pipeline" type="vehicle_control_node.py" name="vehicle_control_node" output="screen" />
+</launch>

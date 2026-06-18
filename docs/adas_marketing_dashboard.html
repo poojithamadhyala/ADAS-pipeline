@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADAS Dashboard</title>
+<style>
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f4f3ef;
+    --text-primary: #18181a;
+    --text-secondary: #5f5e5a;
+    --text-tertiary: #8b8f98;
+    --border-tertiary: rgba(0,0,0,0.12);
+    --font-mono: "SF Mono", "Roboto Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #e9e8e3;
+    padding: 2rem 1rem;
+  }
+  .page { max-width: 1040px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 500; margin: 0 0 1.25rem; color: var(--text-primary); }
+  .wrap {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    background: var(--bg-primary);
+    border-radius: 16px;
+    padding: 1.5rem;
+  }
+  .scenePanel { flex: 1.3; min-width: 360px; }
+  .panel { flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 10px; }
+  .sceneHeader { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+  .sceneHeader p { margin: 0; font-size: 14px; font-weight: 500; }
+  svg#scene { width: 100%; height: auto; border-radius: 12px; }
+  .metrics { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+  .metric { background: var(--bg-secondary); border-radius: 8px; padding: 0.75rem; text-align: center; }
+  .metric p:first-child { font-size: 11px; color: var(--text-secondary); margin: 0 0 4px; }
+  .metric p:last-child { font-family: var(--font-mono); font-size: 20px; font-weight: 500; margin: 0; color: var(--text-primary); }
+  .moduleRow { display: flex; align-items: center; justify-content: space-between; padding: 0.7rem 0.9rem; border-radius: 8px; border: 0.5px solid var(--border-tertiary); }
+  .moduleRow .left { display: flex; align-items: center; gap: 10px; }
+  .moduleRow .left span { font-size: 14px; color: var(--text-primary); }
+  .lightDot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .statusTag { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+  .narrationBox { background: var(--bg-secondary); border-radius: 8px; padding: 0.75rem 0.95rem; min-height: 48px; display: flex; align-items: center; border-left: 2px solid #3FA9F5; }
+  .narrationBox p { font-size: 13px; margin: 0; color: var(--text-secondary); }
+  .hint { font-size: 11px; letter-spacing: 0.5px; color: var(--text-tertiary); margin: 4px 0 0; }
+  .btnRow { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    border-radius: 8px;
+    font-size: 14px;
+    padding: 0.65rem 0.8rem;
+    border: 0.5px solid var(--border-tertiary);
+    background: var(--bg-primary);
+    cursor: pointer;
+    flex: 1;
+    min-width: 120px;
+    color: var(--text-primary);
+  }
+  button:hover { background: var(--bg-secondary); }
+  button:disabled { opacity: 0.5; cursor: default; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>ADAS dashboard</h1>
+  <div class="wrap">
+    <div class="scenePanel">
+      <div class="sceneHeader">
+        <p><span style="color:#3FA9F5;">ADAS</span> <span style="color:var(--text-secondary);font-weight:400;">— Advanced Driver Assistance Systems</span></p>
+        <p id="clockOut" style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary);font-weight:400;">00:00.0</p>
+      </div>
+      <svg id="scene" viewBox="0 0 420 380" role="img" aria-label="Angled road view with rear-facing sedan vehicles, safe-path zone, and warning markers">
+        <defs>
+          <linearGradient id="roadFade" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#C9C7BE"/>
+            <stop offset="1" stop-color="#A6A49A"/>
+          </linearGradient>
+          <linearGradient id="pathGlow" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#1D9E75" stop-opacity="0.05"/>
+            <stop offset="1" stop-color="#1D9E75" stop-opacity="0.35"/>
+          </linearGradient>
+          <linearGradient id="bodySheenLead" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#EDEBE6"/>
+            <stop offset="1" stop-color="#C8C6BD"/>
+          </linearGradient>
+          <linearGradient id="bodySheenEgo" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#4F9AE0"/>
+            <stop offset="1" stop-color="#2270B8"/>
+          </linearGradient>
+        </defs>
+
+        <rect x="0" y="0" width="420" height="380" fill="#EEEDE8"/>
+        <polygon points="40,40 380,40 420,380 0,380" fill="url(#roadFade)"/>
+        <line x1="40" y1="40" x2="0" y2="380" stroke="#ffffff" stroke-width="2"/>
+        <line x1="380" y1="40" x2="420" y2="380" stroke="#ffffff" stroke-width="2"/>
+        <g id="centerDashes"></g>
+
+        <polygon id="safePath" points="170,150 250,150 290,380 130,380" fill="url(#pathGlow)"/>
+        <g id="chevrons"></g>
+
+        <g id="leadCar">
+          <ellipse cx="0" cy="22" rx="32" ry="7" fill="#000000" opacity="0.15"/>
+          <rect x="-28" y="-2" width="56" height="22" rx="6" fill="url(#bodySheenLead)" stroke="#9A988F" stroke-width="0.75"/>
+          <path d="M -22 -2 L -16 -16 Q -14 -19 -8 -19 L 8 -19 Q 14 -19 16 -16 L 22 -2 Z" fill="url(#bodySheenLead)" stroke="#9A988F" stroke-width="0.75"/>
+          <path d="M -15 -3 L -10 -15 Q -9 -16.5 -6 -16.5 L 6 -16.5 Q 9 -16.5 10 -15 L 15 -3 Z" fill="#7C8694"/>
+          <rect x="-28" y="14" width="56" height="6" rx="2" fill="#9A988F" opacity="0.5"/>
+          <ellipse cx="-19" cy="20" rx="8" ry="8" fill="#262522"/>
+          <ellipse cx="19" cy="20" rx="8" ry="8" fill="#262522"/>
+          <ellipse cx="-19" cy="20" rx="3.5" ry="3.5" fill="#54514A"/>
+          <ellipse cx="19" cy="20" rx="3.5" ry="3.5" fill="#54514A"/>
+          <rect id="leadBrakeL" x="-26" y="4" width="9" height="6" rx="2" fill="#E5484D" opacity="0.3"/>
+          <rect id="leadBrakeR" x="17" y="4" width="9" height="6" rx="2" fill="#E5484D" opacity="0.3"/>
+        </g>
+
+        <g id="warnMarker" opacity="0">
+          <circle r="24" fill="none" stroke="#E5484D" stroke-width="2.5" opacity="0.9"/>
+          <circle id="warnPulse" r="24" fill="none" stroke="#E5484D" stroke-width="2"/>
+        </g>
+
+        <g id="egoCar">
+          <ellipse cx="190" cy="372" rx="42" ry="10" fill="#000000" opacity="0.18"/>
+          <rect x="153" y="335" width="74" height="32" rx="8" fill="url(#bodySheenEgo)" stroke="#0C447C" stroke-width="0.75"/>
+          <path d="M 161 335 L 169 314 Q 172 309 180 309 L 200 309 Q 208 309 211 314 L 219 335 Z" fill="url(#bodySheenEgo)" stroke="#0C447C" stroke-width="0.75"/>
+          <path d="M 171 334 L 177 312 Q 178.5 310 182 310 L 198 310 Q 201.5 310 203 312 L 209 334 Z" fill="#103B63"/>
+          <rect x="153" y="357" width="74" height="8" rx="2" fill="#0C447C" opacity="0.55"/>
+          <ellipse cx="166" cy="365" rx="9.5" ry="9.5" fill="#13110F"/>
+          <ellipse cx="214" cy="365" rx="9.5" ry="9.5" fill="#13110F"/>
+          <ellipse cx="166" cy="365" rx="4" ry="4" fill="#3A3835"/>
+          <ellipse cx="214" cy="365" rx="4" ry="4" fill="#3A3835"/>
+        </g>
+
+        <g id="calloutAeb" opacity="0">
+          <line x1="210" y1="245" x2="300" y2="200" stroke="#5F636C" stroke-width="1"/>
+          <circle cx="300" cy="200" r="2.5" fill="#5F636C"/>
+          <rect x="304" y="186" width="112" height="30" rx="6" fill="#ffffff" stroke="var(--border-tertiary)" stroke-width="0.5"/>
+          <text x="314" y="206" font-size="12" font-weight="500" fill="#E5484D">Emergency braking</text>
+        </g>
+
+        <g id="calloutLka" transform="translate(48,300)">
+          <circle r="26" fill="#ffffff" stroke="var(--border-tertiary)" stroke-width="0.5"/>
+          <path d="M -10 0 A 10 10 0 1 1 10 0" fill="none" stroke="#3FA9F5" stroke-width="2"/>
+          <circle r="3" fill="#3FA9F5"/>
+          <text x="0" y="42" text-anchor="middle" font-size="11" fill="var(--text-secondary)">Lane assist</text>
+        </g>
+
+        <g id="calloutAcc" transform="translate(190,55)">
+          <rect x="-58" y="-14" width="116" height="28" rx="14" fill="#ffffff" stroke="var(--border-tertiary)" stroke-width="0.5"/>
+          <text id="accCalloutText" x="0" y="5" text-anchor="middle" font-size="12" font-weight="500" fill="#1D9E75">Cruise control active</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="panel">
+      <div class="metrics">
+        <div class="metric"><p>Speed</p><p id="speedOut">15</p></div>
+        <div class="metric"><p>Gap</p><p id="gapOut">28</p></div>
+        <div class="metric"><p>TTC</p><p id="ttcOut" style="color:var(--text-secondary);">--</p></div>
+      </div>
+
+      <div class="moduleRow" id="row-acc">
+        <div class="left"><span id="light-acc" class="lightDot" style="background:#1D9E75;"></span><span>Adaptive cruise control</span></div>
+        <span id="status-acc" class="statusTag">HOLD</span>
+      </div>
+      <div class="moduleRow" id="row-aeb">
+        <div class="left"><span id="light-aeb" class="lightDot" style="background:var(--border-tertiary);"></span><span>Automatic emergency braking</span></div>
+        <span id="status-aeb" class="statusTag">STBY</span>
+      </div>
+      <div class="moduleRow" id="row-lka">
+        <div class="left"><span id="light-lka" class="lightDot" style="background:#1D9E75;"></span><span>Lane keeping assist</span></div>
+        <span id="status-lka" class="statusTag">CTR</span>
+      </div>
+
+      <div class="narrationBox"><p id="narration">System nominal. Maintaining target speed.</p></div>
+
+      <p class="hint">RUN A TEST SCENARIO</p>
+      <div class="btnRow">
+        <button id="btnSlow">Lead vehicle decelerates</button>
+        <button id="btnSurprise">Sudden close obstacle</button>
+        <button id="btnCurve">Road curvature test</button>
+      </div>
+      <button id="btnReset">Reset simulation</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const leadCar = document.getElementById('leadCar');
+  const leadBrakeL = document.getElementById('leadBrakeL');
+  const leadBrakeR = document.getElementById('leadBrakeR');
+  const warnMarker = document.getElementById('warnMarker');
+  const warnPulse = document.getElementById('warnPulse');
+  const safePath = document.getElementById('safePath');
+  const chevrons = document.getElementById('chevrons');
+  const centerDashes = document.getElementById('centerDashes');
+  const egoCar = document.getElementById('egoCar');
+  const calloutAeb = document.getElementById('calloutAeb');
+  const calloutAcc = document.getElementById('calloutAcc');
+  const accCalloutText = document.getElementById('accCalloutText');
+  const speedOut = document.getElementById('speedOut');
+  const gapOut = document.getElementById('gapOut');
+  const ttcOut = document.getElementById('ttcOut');
+  const statusAcc = document.getElementById('status-acc');
+  const statusAeb = document.getElementById('status-aeb');
+  const statusLka = document.getElementById('status-lka');
+  const lightAcc = document.getElementById('light-acc');
+  const lightAeb = document.getElementById('light-aeb');
+  const lightLka = document.getElementById('light-lka');
+  const rowAeb = document.getElementById('row-aeb');
+  const narration = document.getElementById('narration');
+  const clockOut = document.getElementById('clockOut');
+  const btnSlow = document.getElementById('btnSlow');
+  const btnSurprise = document.getElementById('btnSurprise');
+  const btnCurve = document.getElementById('btnCurve');
+  const btnReset = document.getElementById('btnReset');
+  const allButtons = [btnSlow, btnSurprise, btnCurve];
+
+  const TARGET_SPEED = 15.0;
+  const SAFE_DISTANCE = 20.0;
+  const TTC_THRESHOLD = 1.5;
+  const HORIZON_Y = 150;
+  const NEAR_Y = 365;
+
+  let egoSpeed = TARGET_SPEED;
+  let leadSpeed = TARGET_SPEED;
+  let gapMeters = 28.0;
+  let mode = 'idle';
+  let laneOffset = 0;
+  let laneTarget = 0;
+  let laneTimer = 0;
+  let curveTime = 0;
+  let lastPhase = 'cruise';
+  let dashOffset = 0;
+  let chevOffset = 0;
+  let clock = 0;
+  let pulsePhase = 0;
+
+  for (let i = 0; i < 5; i++){
+    const d = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    d.setAttribute('class', 'dash');
+    d.setAttribute('width', '4');
+    d.setAttribute('fill', '#ffffff');
+    centerDashes.appendChild(d);
+  }
+  const dashes = centerDashes.querySelectorAll('.dash');
+
+  for (let i = 0; i < 5; i++){
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    c.setAttribute('class', 'chev');
+    c.setAttribute('fill', 'none');
+    c.setAttribute('stroke', '#1D9E75');
+    c.setAttribute('stroke-width', '3');
+    c.setAttribute('stroke-linecap', 'round');
+    c.setAttribute('stroke-linejoin', 'round');
+    chevrons.appendChild(c);
+  }
+  const chevs = chevrons.querySelectorAll('.chev');
+
+  function setButtonsDisabled(d){ allButtons.forEach(function(b){ b.disabled = d; }); }
+
+  function setNarration(phase){
+    if (phase === lastPhase) return;
+    lastPhase = phase;
+    const messages = {
+      cruise: 'System nominal. Maintaining target speed.',
+      backoff: 'Lead vehicle decelerating. Adjusting throttle to maintain safe following distance.',
+      brake: 'Time-to-collision below threshold. Emergency braking engaged, overriding cruise control.',
+      recovered: 'Safe distance restored. Returning control to cruise module.',
+      surpriseAppear: 'Obstacle detected at close range. Executing emergency stop.',
+      curving: 'Lane curvature detected. Applying steering correction.',
+      curveDone: 'Lane curvature test complete. Vehicle centered.'
+    };
+    narration.textContent = messages[phase] || '';
+  }
+
+  function depthScale(g){ return Math.max(0.2, Math.min(1, 1 - g / 60)); }
+
+  function tick(){
+    clock += 0.1;
+    clockOut.textContent = Math.floor(clock/60).toString().padStart(2,'0') + ':' + (clock%60).toFixed(1).padStart(4,'0');
+    pulsePhase = (pulsePhase + 0.12) % (Math.PI * 2);
+
+    if (mode === 'slow' && leadSpeed > 4){ leadSpeed = Math.max(4, leadSpeed - 0.18); }
+    if (mode === 'curve'){ curveTime += 1; }
+
+    const gapError = gapMeters - SAFE_DISTANCE;
+    let accThrottle = 0.5 * (TARGET_SPEED - egoSpeed);
+    if (gapMeters < SAFE_DISTANCE){ accThrottle = Math.min(accThrottle, 0.3 * gapError); }
+    accThrottle = Math.max(-1, Math.min(1, accThrottle));
+
+    const relVel = leadSpeed - egoSpeed;
+    let ttc = Infinity;
+    let aebActive = false;
+    if (relVel < -0.05){
+      ttc = gapMeters / Math.abs(relVel);
+      if (ttc < TTC_THRESHOLD){ aebActive = true; }
+    }
+
+    if (aebActive){
+      egoSpeed = Math.max(0, egoSpeed - 0.5);
+      lightAeb.style.background = '#E5484D';
+      rowAeb.style.borderColor = '#E5484D';
+      statusAeb.textContent = 'BRK';
+      statusAeb.style.color = '#E5484D';
+      lightAcc.style.background = 'var(--border-tertiary)';
+      statusAcc.textContent = 'OVR';
+      statusAcc.style.color = 'var(--text-secondary)';
+      setNarration(mode === 'surprise' ? 'surpriseAppear' : 'brake');
+      leadBrakeL.setAttribute('opacity', '1');
+      leadBrakeR.setAttribute('opacity', '1');
+      warnMarker.setAttribute('opacity', '1');
+      calloutAeb.setAttribute('opacity', '1');
+      calloutAcc.setAttribute('opacity', '0');
+      chevs.forEach(function(c){ c.setAttribute('stroke', '#E5484D'); });
+      const pulseR = 24 + Math.sin(pulsePhase) * 4;
+      warnPulse.setAttribute('r', pulseR.toFixed(1));
+      warnPulse.setAttribute('opacity', (0.6 - Math.sin(pulsePhase) * 0.3).toFixed(2));
+    } else {
+      lightAeb.style.background = 'var(--border-tertiary)';
+      rowAeb.style.borderColor = 'var(--border-tertiary)';
+      statusAeb.textContent = 'STBY';
+      statusAeb.style.color = 'var(--text-secondary)';
+      leadBrakeL.setAttribute('opacity', '0.3');
+      leadBrakeR.setAttribute('opacity', '0.3');
+      warnMarker.setAttribute('opacity', '0');
+      calloutAeb.setAttribute('opacity', '0');
+      chevs.forEach(function(c){ c.setAttribute('stroke', '#1D9E75'); });
+      if (accThrottle < -0.05){
+        egoSpeed = Math.max(0, egoSpeed + accThrottle * 0.3);
+        lightAcc.style.background = '#FAC775';
+        statusAcc.textContent = 'ADJ';
+        statusAcc.style.color = '#BA7517';
+        accCalloutText.textContent = 'Easing off — closing gap';
+        accCalloutText.setAttribute('fill', '#BA7517');
+        calloutAcc.setAttribute('opacity', '1');
+        if (mode === 'slow') setNarration('backoff');
+      } else {
+        egoSpeed = egoSpeed + (TARGET_SPEED - egoSpeed) * 0.05;
+        lightAcc.style.background = '#1D9E75';
+        statusAcc.textContent = 'HOLD';
+        statusAcc.style.color = 'var(--text-secondary)';
+        accCalloutText.textContent = 'Cruise control active';
+        accCalloutText.setAttribute('fill', '#1D9E75');
+        calloutAcc.setAttribute('opacity', '1');
+        if (mode === 'slow' && leadSpeed >= TARGET_SPEED - 0.5) setNarration('cruise');
+        if (mode === 'idle' && lastPhase === 'brake') setNarration('recovered');
+        if (mode === 'idle' && lastPhase !== 'curving') setNarration('cruise');
+      }
+    }
+
+    if (mode === 'slow' || mode === 'idle' || mode === 'surprise'){
+      gapMeters += (leadSpeed - egoSpeed) * 0.12;
+      gapMeters = Math.max(2, gapMeters);
+      const scale = depthScale(gapMeters);
+      const yPos = NEAR_Y - (NEAR_Y - HORIZON_Y) * scale * 0.9;
+      leadCar.setAttribute('transform', 'translate(210,' + yPos.toFixed(1) + ') scale(' + scale.toFixed(2) + ')');
+      const visible = gapMeters <= 58;
+      leadCar.setAttribute('opacity', visible ? '1' : '0');
+      warnMarker.setAttribute('transform', 'translate(210,' + yPos.toFixed(1) + ')');
+    } else {
+      leadCar.setAttribute('opacity', '0');
+    }
+
+    if (mode === 'curve'){
+      laneTarget = Math.sin(curveTime * 0.05) * 30;
+      lightLka.style.background = '#FAC775';
+      statusLka.textContent = 'ADJ';
+      statusLka.style.color = '#BA7517';
+      setNarration('curving');
+      if (curveTime > 240){
+        mode = 'idle'; curveTime = 0;
+        setButtonsDisabled(false);
+        setNarration('curveDone');
+      }
+    } else {
+      laneTimer += 1;
+      if (laneTimer > 70){ laneTimer = 0; laneTarget = (Math.random() - 0.5) * 12; }
+    }
+    laneOffset += (laneTarget - laneOffset) * 0.06;
+
+    const skew = laneOffset * 1.3;
+    egoCar.setAttribute('transform', 'translate(' + skew.toFixed(1) + ',0)');
+    safePath.setAttribute('points', (170+skew*0.3)+',150 '+(250+skew*0.3)+',150 '+(290+skew)+',380 '+(130+skew)+',380');
+
+    if (mode !== 'curve'){
+      if (Math.abs(laneOffset) > 4){
+        lightLka.style.background = '#FAC775';
+        statusLka.textContent = 'ADJ';
+        statusLka.style.color = '#BA7517';
+      } else {
+        lightLka.style.background = '#1D9E75';
+        statusLka.textContent = 'CTR';
+        statusLka.style.color = 'var(--text-secondary)';
+      }
+    }
+
+    dashOffset = (dashOffset + egoSpeed * 0.5) % 90;
+    dashes.forEach(function(d, i){
+      const t = (i * 90 + dashOffset) % 450;
+      const prog = t / 450;
+      const y = HORIZON_Y + (NEAR_Y - HORIZON_Y) * prog;
+      const h = 4 + prog * 16;
+      const cx = 210 + skew * prog;
+      d.setAttribute('x', (cx - 2).toFixed(1));
+      d.setAttribute('y', y.toFixed(1));
+      d.setAttribute('height', h.toFixed(1));
+      d.setAttribute('opacity', (0.4 + prog * 0.5).toFixed(2));
+    });
+
+    chevOffset = (chevOffset + egoSpeed * 0.4) % 80;
+    chevs.forEach(function(c, i){
+      const t = (i * 80 + chevOffset) % 400;
+      const prog = t / 400;
+      const y = HORIZON_Y + 10 + (NEAR_Y - HORIZON_Y - 10) * prog;
+      const halfW = 14 + prog * 30;
+      const cx = 210 + skew * (0.3 + prog * 0.7);
+      const h = 10 + prog * 6;
+      c.setAttribute('points', (cx-halfW)+','+y+' '+cx+','+(y+h)+' '+(cx+halfW)+','+y);
+      c.setAttribute('opacity', (0.25 + prog * 0.55).toFixed(2));
+      c.setAttribute('stroke-width', (1.5 + prog * 2).toFixed(1));
+    });
+
+    speedOut.textContent = Math.round(egoSpeed);
+    gapOut.textContent = (mode === 'curve') ? '--' : Math.round(gapMeters);
+    if (mode === 'curve' || ttc === Infinity) {
+      ttcOut.textContent = '--';
+      ttcOut.style.color = 'var(--text-secondary)';
+    } else {
+      ttcOut.textContent = ttc.toFixed(1);
+      ttcOut.style.color = ttc < TTC_THRESHOLD ? '#E5484D' : (ttc < TTC_THRESHOLD * 2 ? '#BA7517' : 'var(--text-primary)');
+    }
+  }
+
+  function resetState(){
+    egoSpeed = TARGET_SPEED; leadSpeed = TARGET_SPEED; gapMeters = 28.0;
+    laneOffset = 0; laneTarget = 0; curveTime = 0; lastPhase = 'cruise';
+    narration.textContent = 'System nominal. Maintaining target speed.';
+  }
+
+  setInterval(tick, 100);
+
+  btnSlow.addEventListener('click', function(){
+    resetState(); mode = 'slow'; setButtonsDisabled(true);
+    setTimeout(function(){ setButtonsDisabled(false); mode = 'idle'; }, 9000);
+  });
+  btnSurprise.addEventListener('click', function(){
+    resetState(); mode = 'surprise'; gapMeters = 6.0; leadSpeed = 6.0;
+    setButtonsDisabled(true);
+    setTimeout(function(){ setButtonsDisabled(false); mode = 'idle'; }, 7000);
+  });
+  btnCurve.addEventListener('click', function(){
+    resetState(); mode = 'curve'; setButtonsDisabled(true);
+  });
+  btnReset.addEventListener('click', function(){
+    mode = 'idle'; resetState(); setButtonsDisabled(false);
+  });
+})();
+</script>
+</body>
+</html>
